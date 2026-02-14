@@ -1,7 +1,7 @@
 #include <network/commandmessage.h>
 #include <mirror/networkclient.h>
 
-void mirror::messages::CommandMessage::Deserialize(NetworkStream& stream)
+void mirror::messages::CommandMessage::Deserialize(NetworkStream &stream)
 {
     netId = stream.ReadVarUint();
     componentIndex = stream.ReadByte();
@@ -12,23 +12,16 @@ void mirror::messages::CommandMessage::Deserialize(NetworkStream& stream)
     stream.ReadBytes(payload.data(), payloadSize);
 }
 
-UnityComponent* mirror::messages::CommandMessage::TargetIdentity()
+UnityComponent *mirror::messages::CommandMessage::TargetIdentity()
 {
-    try {
-        UnityComponent* target = NetworkClient::Spawned()->GetValueByKey(netId);
-        nasec::Assert(target != nullptr, "Failed to get TargetIdentity from netId: " + std::to_string(netId));
-        return target;
-    }
-    catch(const std::exception& e)
-    {
-        spdlog::error("Failed to get TargetIdentity from netId: {}: {}", netId, e.what());
-        throw;
-    }
+    UnityDictionary<uint32_t, UnityComponent *> *spawnedDict = nullptr;
+    UnityResolve::Get("Mirror.dll")->Get("NetworkClient")->Get<UnityField>("spawned")->GetStaticValue(&spawnedDict);
+    return spawnedDict->GetValueByKey(netId);
 }
 
-UnityGameObject* mirror::messages::CommandMessage::Target()
+UnityGameObject *mirror::messages::CommandMessage::Target()
 {
-    UnityGameObject* obj = TargetIdentity()->GetGameObject();
+    UnityGameObject *obj = TargetIdentity()->GetGameObject();
     nasec::Assert(obj != nullptr, "Failed to get GameObject from TargetIdentity");
     return obj;
 }

@@ -18,6 +18,10 @@ namespace mirror::messages
         UnityComponent* TargetIdentity();
         UnityGameObject* Target();
         void Print() override;
+
+        CommandMessage() {
+            msgId = MsgId::CommandMessageId;
+        };
     };
 }
 
