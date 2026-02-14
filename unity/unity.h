@@ -1,5 +1,5 @@
-#ifndef UNITY
-#define UNITY
+#ifndef UNITY_H
+#define UNITY_H
 
 #include <unity/unity_internal.h>
 #include <nasec/assert.h>
@@ -11,6 +11,8 @@ using UnityField = UnityResolve::Field;
 using UnityMethod = UnityResolve::Method;
 using UnityType = UnityResolve::UnityType;
 using UnityString = UnityType::String;
+using UnityObject = UnityType::Object;
+using UnityGameObject = UnityType::GameObject;
 
 template <typename T>
 using UnityArray = UnityType::Array<T>;
@@ -18,6 +20,8 @@ using UnityArray = UnityType::Array<T>;
 namespace Unity
 {
     static constexpr nasec::meta::String AssemblyCSharp = "Assembly-CSharp.dll";
+    static constexpr nasec::meta::String AssemblyFirstPass = "Assembly-CSharp-firstpass.dll";
+    static constexpr nasec::meta::String AssemblyUnityEngine = "UnityEngine.CoreModule.dll";
 
     void Init();
     void ThreadAttach();
@@ -118,4 +122,4 @@ namespace Unity
     }
 }
 
-#endif /* UNITY */
+#endif /* UNITY_H */

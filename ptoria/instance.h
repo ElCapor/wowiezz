@@ -3,6 +3,7 @@
 
 
 #include <unity/unity.h>
+#include <unity/object.h>
 
 struct InstanceBase {
     UnityString* Name();

@@ -1,7 +1,7 @@
 #ifndef SINGLETON
 #define SINGLETON
 
-#include <ptoria/object.h>
+#include <unity/object.h>
 #include <nasec/assert.h>
 
 // singleton for object contraineed to the Object concept

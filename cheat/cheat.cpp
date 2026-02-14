@@ -5,6 +5,7 @@
 #include <core/core.h>
 #include <ptoria/game.h>
 #include <ptoria/scriptinstance.h>
+#include <ptoria/scriptservice.h>
 int main_thread()
 {
     OpenConsole();
@@ -38,5 +39,9 @@ int main_thread()
     }
 
     spdlog::info("ScriptInstance Class Name: {}", StaticClass<ScriptInstance>()->name);
+
+    ScriptService* scriptService = ScriptService::GetInstance();
+    ScriptService::RunScript<ScriptInstance>("print('Hello from C++!')");
+
     return 0;
 }

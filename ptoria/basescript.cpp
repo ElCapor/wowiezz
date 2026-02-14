@@ -1,5 +1,5 @@
 #include <ptoria/basescript.h>
-
+#include <ptoria/scriptinstance.h>
 void BaseScriptBase::SetRunning(bool value) {
     Unity::SetFieldValue<bool, "running">(StaticClass<BaseScript>(), this, value);
 }
@@ -23,3 +23,4 @@ bool BaseScriptBase::RequestedRun() {
 void BaseScriptBase::SetRequestedRun(bool value) {
     Unity::SetFieldValue<bool, "requestedRun">(StaticClass<BaseScript>(), this, value);
 }
+

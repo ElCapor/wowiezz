@@ -73,4 +73,4 @@ namespace nasec {
     }
 }
 
-#endif // OBJECT_H
+#endif /* OBJECT_H */
