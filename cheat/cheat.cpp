@@ -6,6 +6,7 @@
 #include <ptoria/game.h>
 #include <ptoria/scriptinstance.h>
 #include <ptoria/scriptservice.h>
+
 int main_thread()
 {
     OpenConsole();
@@ -20,6 +21,7 @@ int main_thread()
     spdlog::info("Assembly Name: {}", assembly->name);
     UnityClass* instanceClass = StaticClass<Instance>();
     nasec::Assert(instanceClass != nullptr, "Failed to get Instance class");
+    
 
     UnityClass* gameClass = StaticClass<Game>();
     nasec::Assert(gameClass != nullptr, "Failed to get Game class");
@@ -39,9 +41,10 @@ int main_thread()
     }
 
     spdlog::info("ScriptInstance Class Name: {}", StaticClass<ScriptInstance>()->name);
-
+    ScriptService::InstallHooks();
     ScriptService* scriptService = ScriptService::GetInstance();
-    ScriptService::RunScript<ScriptInstance>("print('Hello from C++!')");
+    nasec::Assert(scriptService != nullptr, "Failed to get ScriptService instance");
+    ScriptService::RunScript<ScriptInstance>("print(poop())");
 
     return 0;
 }

@@ -25,7 +25,7 @@ struct DynValue : public Object<DynValue, "DynValue", Unity::AssemblyFirstPass, 
     };
 
     static DynValue *FromString(const std::string &str);
-    static DynValue *FromCallback(UnityObject *callback, const std::string &name);
+    static DynValue *FromCallback(UnityObject *callback, UnityString *name);
     static DynValue *FromNil();
     
     DataType Type();

@@ -4,8 +4,8 @@ DynValue* DynValue::FromString(const std::string& str) {
     return Unity::GetMethod<"NewString">(StaticClass<DynValue>())->Invoke<DynValue*>(UnityString::New(str));
 }
 
-DynValue* DynValue::FromCallback(UnityObject* callback, const std::string& name) {
-    return Unity::GetMethod<"NewCallback">(StaticClass<DynValue>())->Invoke<DynValue*>(callback, UnityString::New(name));
+DynValue* DynValue::FromCallback(UnityObject* callback, UnityString* name) {
+    return Unity::GetMethod<"NewCallback">(StaticClass<DynValue>())->Invoke<DynValue*>(callback, name);
 }
 
 DynValue* DynValue::FromNil() {

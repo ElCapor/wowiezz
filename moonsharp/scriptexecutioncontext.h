@@ -5,7 +5,7 @@
 #include <unity/object.h>
 #include <moonsharp/script.h>
 
-struct ScriptExecutionContext : public Object<ScriptExecutionContext, "ScriptExecutionContext", Unity::AssemblyFirstPass, "MoonSharp.Interpreter.Execution.VM">
+struct ScriptExecutionContext : public Object<ScriptExecutionContext, "ScriptExecutionContext", Unity::AssemblyFirstPass, "MoonSharp.Interpreter">
 {
     Script* OwnerScript();
 };

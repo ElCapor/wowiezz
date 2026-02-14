@@ -9,7 +9,7 @@ target("wowiezz")
     set_languages("c++23")
     add_includedirs(".")
     add_files("**.cpp|injector/*.cpp")
-    add_packages("spdlog")
+    add_packages("spdlog", "microsoft-detours")
     add_links("user32", "dbghelp")
 
 target("injector")

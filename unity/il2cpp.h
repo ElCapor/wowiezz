@@ -1,5 +1,5 @@
 // Written by Nasec(@mrnasec) on 10/02/2026
-
+// @ElCapor rewrote the multicast invoker, added il2cpparray
 /*  What's this?
 
     Basically a Helper header for exclusively Il2cpp
@@ -125,32 +125,82 @@ namespace il2cpp
         bool method_is_virtual;
     };
 
-    #define METHOD_IMPL_ATTRIBUTE_CODE_TYPE_MASK 0x0003
-    #define METHOD_IMPL_ATTRIBUTE_IL 0x0000
-    #define METHOD_IMPL_ATTRIBUTE_NATIVE 0x0001
-    #define METHOD_IMPL_ATTRIBUTE_OPTIL 0x0002
-    #define METHOD_IMPL_ATTRIBUTE_RUNTIME 0x0003
+    typedef uintptr_t il2cpp_array_size_t;
+    typedef int32_t il2cpp_array_lower_bound_t;
 
-    #define METHOD_IMPL_ATTRIBUTE_FORWARD_REF 0x0010
-    #define METHOD_IMPL_ATTRIBUTE_PRESERVE_SIG 0x0080
-    #define METHOD_IMPL_ATTRIBUTE_INTERNAL_CALL 0x1000
-    #define METHOD_IMPL_ATTRIBUTE_SYNCHRONIZED 0x0020
-    #define METHOD_IMPL_ATTRIBUTE_NOINLINING 0x0008
-    #define METHOD_IMPL_ATTRIBUTE_MAX_METHOD_IMPL_VAL 0xffff
+    typedef struct Il2CppArrayBounds
+    {
+        il2cpp_array_size_t length;
+        il2cpp_array_lower_bound_t lower_bound;
+    } Il2CppArrayBounds;
 
-    #define METHOD_ATTRIBUTE_MEMBER_ACCESS_MASK 0x0007
-    #define METHOD_ATTRIBUTE_COMPILER_CONTROLLED 0x0000
-    #define METHOD_ATTRIBUTE_PRIVATE 0x0001
-    #define METHOD_ATTRIBUTE_FAM_AND_ASSEM 0x0002
-    #define METHOD_ATTRIBUTE_ASSEM 0x0003
-    #define METHOD_ATTRIBUTE_FAMILY 0x0004
-    #define METHOD_ATTRIBUTE_FAM_OR_ASSEM 0x0005
-    #define METHOD_ATTRIBUTE_PUBLIC 0x0006
+    typedef struct Il2CppArray : public Il2CppObject
+    {
+        /* bounds is NULL for szarrays */
+        Il2CppArrayBounds *bounds;
+        /* total number of elements of the array */
+        il2cpp_array_size_t max_length;
+    } Il2CppArray;
 
-    #define METHOD_ATTRIBUTE_STATIC 0x0010
-    #define METHOD_ATTRIBUTE_FINAL 0x0020
-    #define METHOD_ATTRIBUTE_VIRTUAL 0x0040
-    #define METHOD_ATTRIBUTE_HIDE_BY_SIG 0x0080
+    typedef struct Il2CppMulticastDelegate
+    {
+        Il2CppDelegate delegate;
+        Il2CppArray *delegates;
+    } Il2CppMulticastDelegate;
+
+    typedef struct Il2CppArraySize : public Il2CppArray
+    {
+        alignas(8) void *vector[0];
+    } Il2CppArraySize;
+
+    static const size_t kIl2CppSizeOfArray = (offsetof(Il2CppArraySize, vector));
+    static const size_t kIl2CppOffsetOfArrayBounds = (offsetof(Il2CppArray, bounds));
+    static const size_t kIl2CppOffsetOfArrayLength = (offsetof(Il2CppArray, max_length));
+
+#define il2cpp_array_addr_with_size(arr, idx, size) ((((uint8_t *)(arr)) + kIl2CppSizeOfArray) + ((size_t)(size) * (idx)))
+
+#define il2cpp_array_setwithsize(array, elementSize, index, value)                      \
+    do                                                                                  \
+    {                                                                                   \
+        void *__p = (void *)il2cpp_array_addr_with_size((array), elementSize, (index)); \
+        memcpy(__p, &(value), elementSize);                                             \
+    } while (0)
+#define il2cpp_array_setrefwithsize(array, elementSize, index, value)                   \
+    do                                                                                  \
+    {                                                                                   \
+        void *__p = (void *)il2cpp_array_addr_with_size((array), elementSize, (index)); \
+        memcpy(__p, value, elementSize);                                                \
+        il2cpp::gc::GarbageCollector::SetWriteBarrier((void **)__p, elementSize);       \
+    } while (0)
+#define il2cpp_array_addr(array, type, index) ((type *)(void *)il2cpp_array_addr_with_size(array, sizeof(type), index))
+#define il2cpp_array_get(array, type, index) (*(type *)il2cpp_array_addr((array), type, (index)))
+
+#define METHOD_IMPL_ATTRIBUTE_CODE_TYPE_MASK 0x0003
+#define METHOD_IMPL_ATTRIBUTE_IL 0x0000
+#define METHOD_IMPL_ATTRIBUTE_NATIVE 0x0001
+#define METHOD_IMPL_ATTRIBUTE_OPTIL 0x0002
+#define METHOD_IMPL_ATTRIBUTE_RUNTIME 0x0003
+
+#define METHOD_IMPL_ATTRIBUTE_FORWARD_REF 0x0010
+#define METHOD_IMPL_ATTRIBUTE_PRESERVE_SIG 0x0080
+#define METHOD_IMPL_ATTRIBUTE_INTERNAL_CALL 0x1000
+#define METHOD_IMPL_ATTRIBUTE_SYNCHRONIZED 0x0020
+#define METHOD_IMPL_ATTRIBUTE_NOINLINING 0x0008
+#define METHOD_IMPL_ATTRIBUTE_MAX_METHOD_IMPL_VAL 0xffff
+
+#define METHOD_ATTRIBUTE_MEMBER_ACCESS_MASK 0x0007
+#define METHOD_ATTRIBUTE_COMPILER_CONTROLLED 0x0000
+#define METHOD_ATTRIBUTE_PRIVATE 0x0001
+#define METHOD_ATTRIBUTE_FAM_AND_ASSEM 0x0002
+#define METHOD_ATTRIBUTE_ASSEM 0x0003
+#define METHOD_ATTRIBUTE_FAMILY 0x0004
+#define METHOD_ATTRIBUTE_FAM_OR_ASSEM 0x0005
+#define METHOD_ATTRIBUTE_PUBLIC 0x0006
+
+#define METHOD_ATTRIBUTE_STATIC 0x0010
+#define METHOD_ATTRIBUTE_FINAL 0x0020
+#define METHOD_ATTRIBUTE_VIRTUAL 0x0040
+#define METHOD_ATTRIBUTE_HIDE_BY_SIG 0x0080
 
     static MethodInfo *CreateCustomMethodInfo(const char *name, std::vector<Il2CppType *> params, Il2CppType *ret, Il2CppMethodPointer ptr)
     {
@@ -175,60 +225,25 @@ namespace il2cpp
         return methodInfo;
     }
 
-    // MulticastDelegate extends Il2CppDelegate with additional fields for managing multiple delegates
-    // The invocation list is stored at offset 120 (after the base Il2CppDelegate fields)
-    // Invocation list structure:
-    //   offset 24: count of delegates
-    //   offset 32: array of delegate pointers (each 8 bytes)
-    //
-    // For each delegate in the list, we call:
-    //   delegate->invoke_impl(delegate->invoke_impl_this, param1, param2, delegate->method)
-    //
-    // Pseudocode:
-    //   int64_t multicast_invoke_impl_2_params(MulticastDelegate* multicast, int64_t param1, int64_t param2)
-    //   {
-    //       InvocationList* list = multicast->invocation_list;  // offset 120
-    //       size_t count = list->count;                          // offset 24
-    //
-    //       if (count == 0)
-    //           return 0;
-    //
-    //       int64_t result;
-    //       for (size_t i = 0; i < count; i++)
-    //       {
-    //           Il2CppDelegate* delegate = list->delegates[i];   // offset 32 + 8*i
-    //           result = delegate->invoke_impl(
-    //               delegate->invoke_impl_this,  // offset 64
-    //               param1,
-    //               param2,
-    //               delegate->method             // offset 40
-    //           );
-    //       }
-    //       return result;
-    //   }
-    //
-    // Decompiled implementation:
-    __int64 __fastcall multicast_invoke_impl_2_params(__int64 a1, __int64 a2, __int64 a3)
+    std::int64_t multicast_invoke_impl_2_params_(Il2CppMulticastDelegate *multicast, std::int64_t param1, std::int64_t param2)
     {
-        unsigned __int64 v3; // rbx
-        __int64 v6;          // r14
-        unsigned __int64 v7; // rdi
-        __int64 result;      // rax
-
-        v3 = 0;
-        v6 = *(uintptr_t *)(a1 + 120);
-        v7 = *(uintptr_t *)(v6 + 24);
-        if (!v7)
+        auto invocation_list = multicast->delegates;
+        auto count = invocation_list->max_length;
+        using invoke_impl_t = std::int64_t(*)(void*, std::int64_t, std::int64_t, const il2cpp::MethodInfo*);
+        if (count == 0)
             return 0;
-        do
+
+        std::int64_t result;
+        for (size_t i = 0; i < count; i++)
         {
-            result = (*(__int64(__fastcall **)(uintptr_t, __int64, __int64, uintptr_t))(*(uintptr_t *)(v6 + 8 * v3 + 32) + 24LL))(
-                *(uintptr_t *)(*(uintptr_t *)(v6 + 8 * v3 + 32) + 64LL),
-                a2,
-                a3,
-                *(uintptr_t *)(*(uintptr_t *)(v6 + 8 * v3 + 32) + 40LL));
-            ++v3;
-        } while (v3 < v7);
+            Il2CppDelegate *delegate = il2cpp_array_get(invocation_list, Il2CppDelegate *, i);
+            result = ((invoke_impl_t)delegate->invoke_impl)(
+                delegate->invoke_impl_this,
+                param1,
+                param2,
+                delegate->method
+            );
+        }
         return result;
     }
 
@@ -243,7 +258,7 @@ namespace il2cpp
         // Sadly we are forced to hardocode the multicast_invoke_impl of every parameter count
         if (methodInfo->parameters_count == 2)
         {
-            delegateFunc->extraArg = (intptr_t)multicast_invoke_impl_2_params;
+            delegateFunc->extraArg = (intptr_t)multicast_invoke_impl_2_params_;
         }
         else
         {
