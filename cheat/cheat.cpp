@@ -8,14 +8,16 @@
 #include <ptoria/scriptservice.h>
 #include <mirror/hooks.h>
 #include <ptoria/networkevent.h>
+#include <ui/ui.h>
 
 int main_thread()
 {
     OpenConsole();
 
-    
+    //NetworkEvent::InstallHooks();
     Unity::Init();
     Unity::ThreadAttach();
+    UI::state = UI::UiState::Ready;
 
     UnityAssembly* assembly = Unity::GetAssembly<Unity::AssemblyCSharp>();
 
@@ -48,6 +50,7 @@ int main_thread()
     nasec::Assert(scriptService != nullptr, "Failed to get ScriptService instance");
     ScriptService::RunScript<ScriptInstance>(R"(InvokeServerHook(game["Hidden"]["DraggerPlace"], function(msg) print(msg) end))");
     mirror::InstallHooks();
-    NetworkEvent::InstallHooks();
+
+    UI::Setup();
     return 0;
 }
