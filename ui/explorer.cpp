@@ -1,8 +1,10 @@
 #include <ui/explorer.h>
 #include <ui/premiumstyle.h>
+#include <ui/iconmanager.h>
 #include <ptoria/game.h>
 #include <imgui.h>
 #include <ui/scriptsource.h>
+#include <unity/unity.h>
 
 // +--------------------------------------------------------+
 // |                       Variables                        |
@@ -14,6 +16,18 @@ static float explorerSplitRatio = 0.55f; // Default ratio for tree/properties sp
 // |                       Functions                        |
 // +--------------------------------------------------------+
 void RenderInstanceTree(Instance *instance);
+
+// Helper function to extract class name from full type name
+// e.g., "Polytoria.Datamodel.LocalScript" -> "LocalScript"
+static std::string GetClassNameFromFullName(const std::string& fullName)
+{
+    size_t lastDot = fullName.find_last_of('.');
+    if (lastDot != std::string::npos && lastDot + 1 < fullName.length())
+    {
+        return fullName.substr(lastDot + 1);
+    }
+    return fullName;
+}
 
 // Helper function to draw a vertical splitter
 static bool VerticalSplitter(float* ratio, float minRatio = 0.2f, float maxRatio = 0.8f)
@@ -323,6 +337,33 @@ void RenderInstanceTree(Instance *instance)
         ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.00f, 0.75f, 0.85f, 0.40f));
         ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.00f, 0.75f, 0.85f, 0.50f));
         ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0.00f, 0.75f, 0.85f, 0.60f));
+    }
+
+    // Get class name for icon lookup
+    std::string className;
+    auto instanceObject = Unity::CastToUnityObject(instance);
+    if (instanceObject)
+    {
+        auto type = instanceObject->GetType();
+        if (type)
+        {
+            std::string fullName = type->GetFullNameOrDefault()->ToString();
+            className = GetClassNameFromFullName(fullName);
+        }
+    }
+
+    // Draw icon before tree node if available
+    float iconSize = 24.0f;  // Larger icon size for better visibility
+    bool hasIcon = false;
+    if (IconManager::IsInitialized() && !className.empty())
+    {
+        // Try to draw the icon for this class
+        ImVec2 size(iconSize, iconSize);
+        if (IconManager::DrawIcon(className.c_str(), size))
+        {
+            hasIcon = true;
+            ImGui::SameLine(0.0f, 6.0f); // Gap between icon and tree node
+        }
     }
 
     bool opened = ImGui::TreeNodeEx(instance, flags, "%s", instance->Name()->ToString().c_str());

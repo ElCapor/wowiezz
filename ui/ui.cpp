@@ -88,6 +88,7 @@ LRESULT __stdcall WndProcHook(const HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM 
 #include <imgui_impl_dx11.h>
 #include <imgui_impl_win32.h>
 #include <ui/premiumstyle.h>
+#include <ui/iconmanager.h>
 
 HRESULT HookPresent(IDXGISwapChain* swap, UINT swapInterval, UINT flags)
 {
@@ -119,6 +120,10 @@ HRESULT HookPresent(IDXGISwapChain* swap, UINT swapInterval, UINT flags)
         PremiumStyle::Initialize();
         PremiumStyle::LoadFonts();
         PremiumStyle::ApplyStyle();
+
+        // Initialize icon manager and load embedded icons
+        IconManager::Initialize(dev);
+        IconManager::LoadEmbeddedIcons(dev);
 
         ImGui_ImplWin32_Init(wnd);
         ImGui_ImplDX11_Init(dev, ctx);

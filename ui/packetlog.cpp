@@ -107,6 +107,10 @@ void PacketLogUI::LogPacket(PacketDirection direction, int channelId,
                             const uint8_t* data, size_t size, 
                             const std::string& parsedInfo)
 {
+    // Don't log if not enabled
+    if (!settings.isEnabled)
+        return;
+    
     std::lock_guard<std::mutex> lock(packetMutex);
     
     // Check if we should log this direction
@@ -138,14 +142,122 @@ void PacketLogUI::LogPacket(PacketDirection direction, int channelId,
     }
 }
 
+void PacketLogUI::InstallHooks()
+{
+    // TODO: Implement actual hook installation
+    // This would hook into the network layer to capture packets
+    settings.isHookInstalled = true;
+}
+
+void PacketLogUI::UninstallHooks()
+{
+    // TODO: Implement actual hook removal
+    settings.isHookInstalled = false;
+    settings.isEnabled = false;
+}
+
+void PacketLogUI::SetEnabled(bool enabled)
+{
+    settings.isEnabled = enabled;
+}
+
 void PacketLogUI::DrawTab()
 {
     // Section header
     PremiumStyle::DrawSectionHeader("Packet Logger");
     ImGui::Spacing();
     
-    // Draw filter bar
-    DrawFilterBar();
+    // Status and setup panel
+    if (!settings.isHookInstalled)
+    {
+        // Not set up - show setup button
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.95f, 0.78f, 0.20f, 1.00f));
+        ImGui::TextWrapped("Packet logging is not set up. Click 'Install Hooks' to begin capturing network traffic.");
+        ImGui::PopStyleColor();
+        ImGui::Spacing();
+        
+        if (PremiumStyle::StyledButton("Install Hooks", true, ImVec2(150, 0)))
+        {
+            InstallHooks();
+        }
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+    }
+    else
+    {
+        // Hooks installed - show enable/disable switch
+        ImGui::Text("Status:");
+        ImGui::SameLine();
+        
+        // Enable/disable toggle
+        if (settings.isEnabled)
+        {
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.2f, 0.9f, 0.4f, 1.0f));
+            ImGui::Text("[LOGGING ACTIVE]");
+            ImGui::PopStyleColor();
+        }
+        else
+        {
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.7f, 0.7f, 0.7f, 1.0f));
+            ImGui::Text("[LOGGING PAUSED]");
+            ImGui::PopStyleColor();
+        }
+        
+        ImGui::SameLine();
+        ImGui::SameLine(ImGui::GetContentRegionAvail().x - 200);
+        
+        // Toggle button
+        if (settings.isEnabled)
+        {
+            if (PremiumStyle::StyledButton("Pause Logging", false, ImVec2(120, 0)))
+            {
+                SetEnabled(false);
+            }
+        }
+        else
+        {
+            if (PremiumStyle::StyledButton("Start Logging", true, ImVec2(120, 0)))
+            {
+                SetEnabled(true);
+            }
+        }
+        
+        ImGui::SameLine();
+        
+        // Uninstall button
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.6f, 0.2f, 0.2f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.7f, 0.3f, 0.3f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.8f, 0.4f, 0.4f, 1.0f));
+        if (ImGui::Button("Uninstall", ImVec2(70, 0)))
+        {
+            UninstallHooks();
+        }
+        ImGui::PopStyleColor(3);
+        
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+        
+        // Only show filter bar and content if logging is active
+        if (settings.isEnabled)
+        {
+            // Draw filter bar
+            DrawFilterBar();
+        }
+        else
+        {
+            // Show paused message
+            ImGui::TextDisabled("Logging is paused. Click 'Start Logging' to resume.");
+        }
+    }
+    
+    // Only show packet list and details if hooks are installed and logging is enabled
+    if (!settings.isHookInstalled || !settings.isEnabled)
+    {
+        // Show placeholder or empty state
+        return;
+    }
     
     ImGui::Spacing();
     ImGui::Separator();

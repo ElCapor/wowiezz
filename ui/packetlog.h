@@ -46,6 +46,8 @@ struct CapturedPacket
 // Packet logger settings
 struct PacketLogSettings
 {
+    bool isEnabled = false;             // Master enable/disable switch (disabled by default)
+    bool isHookInstalled = false;       // Whether the hook is currently installed
     bool logOutgoing = true;            // Log outgoing packets
     bool logIncoming = true;            // Log incoming packets
     bool autoScroll = true;             // Auto-scroll to new packets
@@ -72,6 +74,9 @@ public:
     // Get mutex for thread-safe access
     static std::mutex& GetMutex() { return packetMutex; }
     
+    // Check if logging is enabled
+    static bool IsEnabled() { return settings.isEnabled && settings.isHookInstalled; }
+    
     // Check if interception is enabled
     static bool IsInterceptionEnabled() { return settings.interceptEnabled; }
     
@@ -80,6 +85,13 @@ public:
     
     // Set pending packet for modification
     static void SetPendingPacket(std::unique_ptr<CapturedPacket> packet) { pendingPacket = std::move(packet); }
+    
+    // Install/uninstall hooks
+    static void InstallHooks();
+    static void UninstallHooks();
+    
+    // Toggle logging on/off
+    static void SetEnabled(bool enabled);
 
 private:
     static void DrawPacketList();
