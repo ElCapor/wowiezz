@@ -16,6 +16,42 @@ uint64_t PacketLogUI::nextPacketId = 1;
 std::unique_ptr<CapturedPacket> PacketLogUI::pendingPacket = nullptr;
 std::string PacketLogUI::searchFilter;
 int PacketLogUI::hexViewOffset = 0;
+static float packetLogSplitRatio = 0.5f; // Default ratio for list/details split
+
+// Helper function to draw a vertical splitter
+static bool VerticalSplitter(float* ratio, float minRatio = 0.2f, float maxRatio = 0.8f)
+{
+    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0, 0, 0, 0));
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.5f, 0.5f, 0.5f, 0.5f));
+    ImGui::Button("##Splitter", ImVec2(-1, 6.0f));
+    ImGui::PopStyleColor(3);
+    
+    if (ImGui::IsItemActive())
+    {
+        float mouseY = ImGui::GetMousePos().y;
+        float windowTop = ImGui::GetItemRectMin().y - (*ratio) * ImGui::GetWindowHeight();
+        float windowBottom = windowTop + ImGui::GetWindowHeight();
+        
+        float newRatio = (mouseY - windowTop) / (windowBottom - windowTop);
+        // Manual clamp since ImClamp may not be available
+        if (newRatio < minRatio) newRatio = minRatio;
+        if (newRatio > maxRatio) newRatio = maxRatio;
+        
+        if (newRatio != *ratio)
+        {
+            *ratio = newRatio;
+            return true;
+        }
+    }
+    
+    if (ImGui::IsItemHovered())
+    {
+        ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeNS);
+    }
+    
+    return false;
+}
 
 // +--------------------------------------------------------+
 // |                   CapturedPacket Methods               |
@@ -115,10 +151,14 @@ void PacketLogUI::DrawTab()
     ImGui::Separator();
     ImGui::Spacing();
     
-    // Main content area - split into list and details
+    // Main content area - split into list and details with resizable splitter
     float availableHeight = ImGui::GetContentRegionAvail().y;
-    float listHeight = availableHeight * 0.5f;
-    float detailsHeight = availableHeight * 0.5f - 30.0f;
+    float splitterHeight = 6.0f;
+    float spacingHeight = 8.0f;
+    float interceptionHeight = settings.interceptEnabled ? 120.0f : 0.0f;
+    float totalContentHeight = availableHeight - splitterHeight - spacingHeight - interceptionHeight;
+    float listHeight = totalContentHeight * packetLogSplitRatio;
+    float detailsHeight = totalContentHeight * (1.0f - packetLogSplitRatio);
     
     // Packet list
     if (PremiumStyle::IsPremiumEnabled)
@@ -137,7 +177,8 @@ void PacketLogUI::DrawTab()
         ImGui::PopStyleVar();
     }
     
-    ImGui::Spacing();
+    // Resizable splitter
+    VerticalSplitter(&packetLogSplitRatio);
     
     // Packet details
     if (PremiumStyle::IsPremiumEnabled)

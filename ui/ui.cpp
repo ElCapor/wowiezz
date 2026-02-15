@@ -148,30 +148,72 @@ HRESULT HookPresent(IDXGISwapChain* swap, UINT swapInterval, UINT flags)
 #include <ui/scriptsource.h>
 #include <ui/settingsui.h>
 #include <ui/packetlog.h>
+#include <ui/about.h>
+#include <chrono>
+
+// Waiting screen fade variables
+static bool waitingScreenShown = false;
+static bool waitingScreenHidden = false;
+static std::chrono::steady_clock::time_point waitingScreenShowTime;
+
+// Closed hint fade variables
+static bool closedHintShown = false;
+static bool closedHintHidden = false;
+static std::chrono::steady_clock::time_point closedHintShowTime;
 
 void UI::DrawWaitingScreen()
 {
-    const ImVec2 windowSize = ImVec2(320, 120);
+    // If already hidden, don't show again
+    if (waitingScreenHidden)
+        return;
+    
+    // Initialize show time on first display
+    if (!waitingScreenShown)
+    {
+        waitingScreenShown = true;
+        waitingScreenShowTime = std::chrono::steady_clock::now();
+    }
+    
+    // Calculate fade (5 seconds = 5000ms)
+    auto now = std::chrono::steady_clock::now();
+    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - waitingScreenShowTime).count();
+    const float fadeDuration = 5000.0f;
+    
+    // Hide completely after fade
+    if (elapsed >= fadeDuration)
+    {
+        waitingScreenHidden = true;
+        return;
+    }
+    
+    // Calculate alpha (1.0 -> 0.0 over fade duration)
+    float alpha = 1.0f - (elapsed / fadeDuration);
+    
+    const ImVec2 windowSize = ImVec2(280, 80);
+    const float padding = 20.0f;
+    
+    // Position at bottom-left of screen
     ImGui::SetNextWindowSize(windowSize, ImGuiCond_Always);
-    ImGui::SetNextWindowPos(ImVec2((ImGui::GetIO().DisplaySize.x - windowSize.x) / 2, (ImGui::GetIO().DisplaySize.y - windowSize.y) / 2), ImGuiCond_Always);
+    ImGui::SetNextWindowPos(ImVec2(padding, ImGui::GetIO().DisplaySize.y - windowSize.y - padding), ImGuiCond_Always);
     
     if (PremiumStyle::IsPremiumEnabled)
     {
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 10.0f);
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(20, 20));
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 8.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(16, 12));
+        ImGui::PushStyleVar(ImGuiStyleVar_Alpha, alpha);
+    }
+    else
+    {
+        ImGui::PushStyleVar(ImGuiStyleVar_Alpha, alpha);
     }
     
-    ImGui::Begin("##waiting", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar);
+    ImGui::Begin("##waiting", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoFocusOnAppearing);
     
-    // Center the text
     const char* title = "PolyHack";
     const char* subtitle = "Waiting for Unity...";
     
     if (PremiumStyle::IsPremiumEnabled && PremiumStyle::FontBold)
         ImGui::PushFont(PremiumStyle::FontBold);
-    
-    ImVec2 titleSize = ImGui::CalcTextSize(title);
-    ImGui::SetCursorPosX((windowSize.x - titleSize.x) / 2);
     
     if (PremiumStyle::IsPremiumEnabled)
         ImGui::TextColored(ImVec4(0.00f, 0.75f, 0.85f, 1.00f), "%s", title);
@@ -181,16 +223,18 @@ void UI::DrawWaitingScreen()
     if (PremiumStyle::IsPremiumEnabled && PremiumStyle::FontBold)
         ImGui::PopFont();
     
-    ImGui::Spacing();
-    
-    ImVec2 subtitleSize = ImGui::CalcTextSize(subtitle);
-    ImGui::SetCursorPosX((windowSize.x - subtitleSize.x) / 2);
     ImGui::TextDisabled("%s", subtitle);
     
     ImGui::End();
     
     if (PremiumStyle::IsPremiumEnabled)
-        ImGui::PopStyleVar(2);
+    {
+        ImGui::PopStyleVar(3);
+    }
+    else
+    {
+        ImGui::PopStyleVar();
+    }
 }
 
 void UI::DrawMainUI()
@@ -267,6 +311,11 @@ void UI::DrawMainUI()
             SettingsUI::DrawTab();
             ImGui::EndTabItem();
         }
+        if (ImGui::BeginTabItem("About"))
+        {
+            AboutUI::DrawTab();
+            ImGui::EndTabItem();
+        }
         for (auto it = ScriptSourceUI::openTabs.begin(); it != ScriptSourceUI::openTabs.end();)
         {
             bool isOpen = true;
@@ -295,26 +344,57 @@ void UI::DrawMainUI()
 
 void UI::DrawClosedHint()
 {
-    const ImVec2 windowSize = ImVec2(340, 100);
+    // If already hidden, don't show again
+    if (closedHintHidden)
+        return;
+    
+    // Initialize show time on first display
+    if (!closedHintShown)
+    {
+        closedHintShown = true;
+        closedHintShowTime = std::chrono::steady_clock::now();
+    }
+    
+    // Calculate fade (5 seconds = 5000ms)
+    auto now = std::chrono::steady_clock::now();
+    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - closedHintShowTime).count();
+    const float fadeDuration = 5000.0f;
+    
+    // Hide completely after fade
+    if (elapsed >= fadeDuration)
+    {
+        closedHintHidden = true;
+        return;
+    }
+    
+    // Calculate alpha (1.0 -> 0.0 over fade duration)
+    float alpha = 1.0f - (elapsed / fadeDuration);
+    
+    const ImVec2 windowSize = ImVec2(280, 80);
+    const float padding = 20.0f;
+    
+    // Position at bottom-left of screen
     ImGui::SetNextWindowSize(windowSize, ImGuiCond_Always);
-    ImGui::SetNextWindowPos(ImVec2((ImGui::GetIO().DisplaySize.x - windowSize.x) / 2, (ImGui::GetIO().DisplaySize.y - windowSize.y) / 2), ImGuiCond_Always);
+    ImGui::SetNextWindowPos(ImVec2(padding, ImGui::GetIO().DisplaySize.y - windowSize.y - padding), ImGuiCond_Always);
     
     if (PremiumStyle::IsPremiumEnabled)
     {
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 10.0f);
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(20, 16));
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 8.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(16, 12));
+        ImGui::PushStyleVar(ImGuiStyleVar_Alpha, alpha);
+    }
+    else
+    {
+        ImGui::PushStyleVar(ImGuiStyleVar_Alpha, alpha);
     }
     
-    ImGui::Begin("##closed", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar);
+    ImGui::Begin("##closed", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoFocusOnAppearing);
     
     const char* title = "UI Hidden";
-    const char* hint = "Press DELETE to toggle the UI";
+    const char* hint = "Press DELETE to toggle";
     
     if (PremiumStyle::IsPremiumEnabled && PremiumStyle::FontBold)
         ImGui::PushFont(PremiumStyle::FontBold);
-    
-    ImVec2 titleSize = ImGui::CalcTextSize(title);
-    ImGui::SetCursorPosX((windowSize.x - titleSize.x) / 2);
     
     if (PremiumStyle::IsPremiumEnabled)
         ImGui::TextColored(ImVec4(0.95f, 0.78f, 0.20f, 1.00f), "%s", title);
@@ -324,14 +404,16 @@ void UI::DrawClosedHint()
     if (PremiumStyle::IsPremiumEnabled && PremiumStyle::FontBold)
         ImGui::PopFont();
     
-    ImGui::Spacing();
-    
-    ImVec2 hintSize = ImGui::CalcTextSize(hint);
-    ImGui::SetCursorPosX((windowSize.x - hintSize.x) / 2);
     ImGui::TextDisabled("%s", hint);
     
     ImGui::End();
     
     if (PremiumStyle::IsPremiumEnabled)
-        ImGui::PopStyleVar(2);
+    {
+        ImGui::PopStyleVar(3);
+    }
+    else
+    {
+        ImGui::PopStyleVar();
+    }
 }
