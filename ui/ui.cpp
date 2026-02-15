@@ -87,6 +87,7 @@ LRESULT __stdcall WndProcHook(const HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM 
 #include <imgui.h>
 #include <imgui_impl_dx11.h>
 #include <imgui_impl_win32.h>
+#include <ui/premiumstyle.h>
 
 HRESULT HookPresent(IDXGISwapChain* swap, UINT swapInterval, UINT flags)
 {
@@ -110,14 +111,14 @@ HRESULT HookPresent(IDXGISwapChain* swap, UINT swapInterval, UINT flags)
         ImGui::CreateContext();
         ImGuiIO &io = ImGui::GetIO();
         (void)io;
-        ImGuiStyle &style = ImGui::GetStyle();
         io.IniFilename = nullptr;
         io.LogFilename = nullptr;
         io.ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange;
-        style.FrameRounding = 3.0f;
-        style.GrabRounding = 3.0f;
 
-        io.Fonts->AddFontDefault();
+        // Initialize and apply premium style
+        PremiumStyle::Initialize();
+        PremiumStyle::LoadFonts();
+        PremiumStyle::ApplyStyle();
 
         ImGui_ImplWin32_Init(wnd);
         ImGui_ImplDX11_Init(dev, ctx);
@@ -148,18 +149,77 @@ HRESULT HookPresent(IDXGISwapChain* swap, UINT swapInterval, UINT flags)
 
 void UI::DrawWaitingScreen()
 {
-    ImGui::SetNextWindowSize(ImVec2(300, 100), ImGuiCond_Always);
-    ImGui::SetNextWindowPos(ImVec2((ImGui::GetIO().DisplaySize.x - 300) / 2, (ImGui::GetIO().DisplaySize.y - 100) / 2), ImGuiCond_Always);
-    ImGui::Begin("Waiting for Unity", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
-    ImGui::Text("Waiting for Unity...");
+    const ImVec2 windowSize = ImVec2(320, 120);
+    ImGui::SetNextWindowSize(windowSize, ImGuiCond_Always);
+    ImGui::SetNextWindowPos(ImVec2((ImGui::GetIO().DisplaySize.x - windowSize.x) / 2, (ImGui::GetIO().DisplaySize.y - windowSize.y) / 2), ImGuiCond_Always);
+    
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 10.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(20, 20));
+    
+    ImGui::Begin("##waiting", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar);
+    
+    // Center the text
+    const char* title = "PolyHack";
+    const char* subtitle = "Waiting for Unity...";
+    
+    if (PremiumStyle::FontBold)
+        ImGui::PushFont(PremiumStyle::FontBold);
+    
+    ImVec2 titleSize = ImGui::CalcTextSize(title);
+    ImGui::SetCursorPosX((windowSize.x - titleSize.x) / 2);
+    ImGui::TextColored(ImVec4(0.00f, 0.75f, 0.85f, 1.00f), "%s", title);
+    
+    if (PremiumStyle::FontBold)
+        ImGui::PopFont();
+    
+    ImGui::Spacing();
+    
+    ImVec2 subtitleSize = ImGui::CalcTextSize(subtitle);
+    ImGui::SetCursorPosX((windowSize.x - subtitleSize.x) / 2);
+    ImGui::TextDisabled("%s", subtitle);
+    
     ImGui::End();
+    ImGui::PopStyleVar(2);
 }
 
 void UI::DrawMainUI()
 {
-    ImGui::Begin("PolyHack - @ElCapor", nullptr, ImGuiWindowFlags_MenuBar);
-    ImGui::Text("#1 Open Source Cheat for Polytoria - V3 Rewrite");
-    if (ImGui::BeginTabBar("##tabs", ImGuiTabBarFlags_Reorderable))
+    // Set initial window size and position
+    ImGui::SetNextWindowSize(ImVec2(900, 600), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowPos(ImVec2(100, 100), ImGuiCond_FirstUseEver);
+    
+    // Premium window styling
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 8.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(12, 12));
+    
+    ImGui::Begin("PolyHack", nullptr, ImGuiWindowFlags_MenuBar);
+    
+    // Header section with branding
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(8, 4));
+    
+    // Title with accent color
+    if (PremiumStyle::FontBold)
+        ImGui::PushFont(PremiumStyle::FontBold);
+    ImGui::TextColored(ImVec4(0.00f, 0.75f, 0.85f, 1.00f), "PolyHack");
+    if (PremiumStyle::FontBold)
+        ImGui::PopFont();
+    
+    ImGui::SameLine();
+    ImGui::TextDisabled("|");
+    ImGui::SameLine();
+    ImGui::TextDisabled("@ElCapor");
+    
+    ImGui::PopStyleVar();
+    
+    // Subtitle
+    ImGui::TextDisabled("Open Source Cheat for Polytoria - V3 Rewrite");
+    ImGui::Spacing();
+    ImGui::Separator();
+    ImGui::Spacing();
+    
+    // Tab bar with premium styling
+    ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 6.0f);
+    if (ImGui::BeginTabBar("##tabs", ImGuiTabBarFlags_Reorderable | ImGuiTabBarFlags_TabListPopupButton))
     {
         if (ImGui::BeginTabItem("Explorer"))
         {
@@ -177,29 +237,57 @@ void UI::DrawMainUI()
             ImGui::EndTabItem();
         }
         for (auto it = ScriptSourceUI::openTabs.begin(); it != ScriptSourceUI::openTabs.end();)
+        {
+            bool isOpen = true;
+            if (ImGui::BeginTabItem(("Decompile: " + it->instance->Name()->ToString()).c_str(), &isOpen))
             {
-                bool isOpen = true;
-                if (ImGui::BeginTabItem(("Decompile: " + it->instance->Name()->ToString()).c_str(), &isOpen))
-                {
-                    ScriptSourceUI::DrawTab(&(*it));
-                    ImGui::EndTabItem();
-                }
-
-                if (!isOpen)
-                    it = ScriptSourceUI::openTabs.erase(it);
-                else
-                    ++it;
+                ScriptSourceUI::DrawTab(&(*it));
+                ImGui::EndTabItem();
             }
+
+            if (!isOpen)
+                it = ScriptSourceUI::openTabs.erase(it);
+            else
+                ++it;
+        }
         ImGui::EndTabBar();
     }
+    ImGui::PopStyleVar();
+    
     ImGui::End();
+    ImGui::PopStyleVar(2);
 }
 
 void UI::DrawClosedHint()
 {
-    ImGui::SetNextWindowSize(ImVec2(300, 100), ImGuiCond_Always);
-    ImGui::SetNextWindowPos(ImVec2((ImGui::GetIO().DisplaySize.x - 300) / 2, (ImGui::GetIO().DisplaySize.y - 100) / 2), ImGuiCond_Always);
-    ImGui::Begin("UI Closed", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
-    ImGui::Text("UI is closed. Press Keybind (DELTE) to open it again.");
+    const ImVec2 windowSize = ImVec2(340, 100);
+    ImGui::SetNextWindowSize(windowSize, ImGuiCond_Always);
+    ImGui::SetNextWindowPos(ImVec2((ImGui::GetIO().DisplaySize.x - windowSize.x) / 2, (ImGui::GetIO().DisplaySize.y - windowSize.y) / 2), ImGuiCond_Always);
+    
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 10.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(20, 16));
+    
+    ImGui::Begin("##closed", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar);
+    
+    const char* title = "UI Hidden";
+    const char* hint = "Press DELETE to toggle the UI";
+    
+    if (PremiumStyle::FontBold)
+        ImGui::PushFont(PremiumStyle::FontBold);
+    
+    ImVec2 titleSize = ImGui::CalcTextSize(title);
+    ImGui::SetCursorPosX((windowSize.x - titleSize.x) / 2);
+    ImGui::TextColored(ImVec4(0.95f, 0.78f, 0.20f, 1.00f), "%s", title);
+    
+    if (PremiumStyle::FontBold)
+        ImGui::PopFont();
+    
+    ImGui::Spacing();
+    
+    ImVec2 hintSize = ImGui::CalcTextSize(hint);
+    ImGui::SetCursorPosX((windowSize.x - hintSize.x) / 2);
+    ImGui::TextDisabled("%s", hint);
+    
     ImGui::End();
+    ImGui::PopStyleVar(2);
 }
