@@ -143,6 +143,7 @@ HRESULT HookPresent(IDXGISwapChain* swap, UINT swapInterval, UINT flags)
 // +--------------------------------------------------------+
 #include <ui/explorer.h>
 #include <ui/saveinstance.h>
+#include <ui/executor.h>
 
 void UI::DrawWaitingScreen()
 {
@@ -167,6 +168,11 @@ void UI::DrawMainUI()
         if (ImGui::BeginTabItem("Save Instance"))
         {
             SaveInstanceUI::DrawTab();
+            ImGui::EndTabItem();
+        }
+        if (ImGui::BeginTabItem("Executor"))
+        {
+            ExecutorUI::DrawTab();
             ImGui::EndTabItem();
         }
         ImGui::EndTabBar();

@@ -219,6 +219,12 @@ DynValue* fireclickdetector(void*, ScriptExecutionContext* ctx, CallbackArgument
     return DynValue::FromNil();
 }
 
+DynValue* identifyexecutor(void*, ScriptExecutionContext* ctx, CallbackArguments* args)
+{
+    // elcapor compatible executor
+    return DynValue::FromString("elcapor");
+}
+
 void InstallEnvironnement(Script *script)
 {
     RegisterCallback(script->Globals(), "poop", poop);
@@ -229,6 +235,7 @@ void InstallEnvironnement(Script *script)
     RegisterCallback(script->Globals(), "serverequiptool", serverequiptool);
     RegisterCallback(script->Globals(), "sendchat", sendchat);
     RegisterCallback(script->Globals(), "fireclickdetector", fireclickdetector);
+    RegisterCallback(script->Globals(), "identifyexecutor", identifyexecutor);
 }
 
 void ScriptService::InstallHooks()
